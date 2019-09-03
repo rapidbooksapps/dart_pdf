@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.3.24
+
+- Add Arabic conversion function
+
 ## 1.3.23
 
 - Implement ListView.builder and ListView.separated
