@@ -165,58 +165,23 @@ class MyAppState extends State<MyApp> {
           appBar: AppBar(
             title: const Text('Pdf Printing Example'),
           ),
-          body: Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-              children: <Widget>[
-                RaisedButton(
-                    child: const Text('Print Document'), onPressed: _printPdf),
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    RaisedButton(
-                        key: pickWidget,
-                        child: const Text('Pick Printer'),
-                        onPressed: _pickPrinter),
-                    const SizedBox(width: 10),
-                    RaisedButton(
-                        child: Text(selectedPrinter == null
-                            ? 'Direct Print'
-                            : 'Print to $selectedPrinter'),
-                        onPressed:
-                            selectedPrinter != null ? _directPrintPdf : null),
-                  ],
+          body: RichText(
+            textDirection: TextDirection.rtl,
+            text: TextSpan(
+              text: 'قهوة\n',
+              style: TextStyle(
+                fontFamily: 'arabic',
+                color: Colors.black,
+                fontSize: 60,
+              ),
+              children: const <TextSpan>[
+                TextSpan(
+                  text:
+                      'القهوة مشروب يعد من بذور الب المحمصة، وينمو في أكثر من 70 لداً. خصوصاً في المناطق الاستوائية في أمريكا الشمالية والجنوبية وجنوب شرق آسيا وشبه القارة الهندية وأفريقيا. ويقال أن البن الأخضر هو ثاني أكثر السلع تداولاً في العالم بعد النفط الخام.',
+                  style: TextStyle(
+                    fontSize: 30,
+                  ),
                 ),
-                RaisedButton(
-                    key: shareWidget,
-                    child: const Text('Share Document'),
-                    onPressed: _sharePdf),
-                RaisedButton(
-                    child: const Text('Print Screenshot'),
-                    onPressed: _printScreen),
-                RaisedButton(
-                    child: const Text('Save to file'), onPressed: _saveAsFile),
-                RaisedButton(
-                    child: const Text('Print Html'), onPressed: _printHtml),
-                RaisedButton(
-                    child: const Text('Print Markdown'),
-                    onPressed: _printMarkdown),
-                canDebug
-                    ? Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: <Widget>[
-                          const Text('Debug'),
-                          Switch.adaptive(
-                            onChanged: (bool value) {
-                              setState(() {
-                                pdf.Document.debug = value;
-                              });
-                            },
-                            value: pdf.Document.debug,
-                          ),
-                        ],
-                      )
-                    : const SizedBox(),
               ],
             ),
           ),
