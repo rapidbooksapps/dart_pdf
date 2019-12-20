@@ -23,6 +23,7 @@ import android.os.Build;
 import android.os.Bundle;
 import android.os.CancellationSignal;
 import android.os.Environment;
+import android.os.Handler;
 import android.os.ParcelFileDescriptor;
 import android.print.PageRange;
 import android.print.PdfConvert;
@@ -55,6 +56,7 @@ public class PrintingJob extends PrintDocumentAdapter {
     private byte[] documentData;
     private String jobName;
     private LayoutResultCallback callback;
+    private Handler handler;
     int index;
 
     PrintingJob(Context context, PrintingPlugin printing, int index) {
@@ -62,6 +64,7 @@ public class PrintingJob extends PrintDocumentAdapter {
         this.printing = printing;
         this.index = index;
         printManager = (PrintManager) context.getSystemService(Context.PRINT_SERVICE);
+        handler = new Handler();
     }
 
     static HashMap<String, Object> printingInfo() {
@@ -76,12 +79,12 @@ public class PrintingJob extends PrintDocumentAdapter {
 
     @Override
     public void onWrite(PageRange[] pageRanges, ParcelFileDescriptor parcelFileDescriptor,
-            CancellationSignal cancellationSignal, WriteResultCallback writeResultCallback) {
+                        CancellationSignal cancellationSignal, WriteResultCallback writeResultCallback) {
         OutputStream output = null;
         try {
             output = new FileOutputStream(parcelFileDescriptor.getFileDescriptor());
             output.write(documentData, 0, documentData.length);
-            writeResultCallback.onWriteFinished(new PageRange[] {PageRange.ALL_PAGES});
+            writeResultCallback.onWriteFinished(new PageRange[]{PageRange.ALL_PAGES});
         } catch (IOException e) {
             e.printStackTrace();
         } finally {
@@ -97,7 +100,7 @@ public class PrintingJob extends PrintDocumentAdapter {
 
     @Override
     public void onLayout(PrintAttributes oldAttributes, PrintAttributes newAttributes,
-            CancellationSignal cancellationSignal, LayoutResultCallback callback, Bundle extras) {
+                         CancellationSignal cancellationSignal, LayoutResultCallback callback, Bundle extras) {
         // Respond to cancellation request
         if (cancellationSignal.isCanceled()) {
             callback.onLayoutCancelled();
@@ -119,29 +122,34 @@ public class PrintingJob extends PrintDocumentAdapter {
 
     @Override
     public void onFinish() {
-        try {
-            while (true) {
-                int state = printJob.getInfo().getState();
+        checkJobState();
+    }
 
-                if (state == PrintJobInfo.STATE_COMPLETED) {
-                    printing.onCompleted(this, true, "");
-                    break;
-                } else if (state == PrintJobInfo.STATE_CANCELED) {
-                    printing.onCompleted(this, false, "User canceled");
-                    break;
+    void checkJobState() {
+        handler.postDelayed(new Runnable() {
+            @Override
+            public void run() {
+                try {
+                    int state = printJob.getInfo().getState();
+                    if (state == PrintJobInfo.STATE_COMPLETED) {
+                        printing.onCompleted(PrintingJob.this, true, "");
+                        printJob = null;
+                    } else if (state == PrintJobInfo.STATE_CANCELED) {
+                        printing.onCompleted(PrintingJob.this, false, "User canceled");
+                        printJob = null;
+                    } else {
+                        checkJobState();
+                    }
+                } catch (Exception ex) {
+                    printing.onCompleted(PrintingJob.this, printJob != null && printJob.isCompleted(), ex.getMessage());
+                    printJob = null;
                 }
-
-                Thread.sleep(200);
             }
-        } catch (Exception e) {
-            printing.onCompleted(this, printJob != null && printJob.isCompleted(), e.getMessage());
-        }
-
-        printJob = null;
+        }, 200);
     }
 
     void printPdf(@NonNull String name, Double width, Double height, Double marginLeft,
-            Double marginTop, Double marginRight, Double marginBottom) {
+                  Double marginTop, Double marginRight, Double marginBottom) {
         jobName = name;
         printJob = printManager.print(name, this, null);
     }
@@ -186,7 +194,7 @@ public class PrintingJob extends PrintDocumentAdapter {
     }
 
     void convertHtml(final String data, final PrintAttributes.MediaSize size,
-            final PrintAttributes.Margins margins, final String baseUrl) {
+                     final PrintAttributes.Margins margins, final String baseUrl) {
         final WebView webView = new WebView(context.getApplicationContext());
 
         webView.loadDataWithBaseURL(baseUrl, data, "text/HTML", "UTF-8", null);
@@ -234,8 +242,8 @@ public class PrintingJob extends PrintDocumentAdapter {
         documentData = data;
 
         PrintDocumentInfo info = new PrintDocumentInfo.Builder(jobName + ".pdf")
-                                         .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
-                                         .build();
+                .setContentType(PrintDocumentInfo.CONTENT_TYPE_DOCUMENT)
+                .build();
 
         // Content layout reflow is complete
         callback.onLayoutFinished(info, true);
